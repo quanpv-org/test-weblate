@@ -1,5 +1,18 @@
 name: "SonarQube Analysis"
 
+# This workflow performs automated code quality and security scanning using SonarQube
+# 
+# Required GitHub Secrets:
+#   SONAR_TOKEN: Authentication token for SonarQube (generate from SonarQube account)
+#   SONAR_HOST_URL: URL of your SonarQube server (e.g., https://sonarcloud.io)
+#
+# Features:
+#   - Code quality analysis
+#   - Security vulnerability detection
+#   - Code coverage reporting
+#   - Duplicate code detection
+#   - Quality gate enforcement
+
 on:
   push:
     branches:
