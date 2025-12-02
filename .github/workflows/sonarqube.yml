@@ -1,61 +1,40 @@
-name: "SonarQube Analysis"
-
-# This workflow performs automated code quality and security scanning using SonarQube
-# 
-# Required GitHub Secrets:
-#   SONAR_TOKEN: Authentication token for SonarQube (generate from SonarQube account)
-#   SONAR_HOST_URL: URL of your SonarQube server (e.g., https://sonarcloud.io)
-#
-# Features:
-#   - Code quality analysis
-#   - Security vulnerability detection
-#   - Code coverage reporting
-#   - Duplicate code detection
-#   - Quality gate enforcement
+name: Build
 
 on:
   push:
     branches:
       - master
-      - main
   pull_request:
-    branches:
-      - master
-      - main
+    types: [opened, synchronize, reopened]
 
 jobs:
-  sonarqube:
-    name: SonarQube Scan
+  build:
+    name: Build and analyze
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      pull-requests: read
-
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          # Fetch all history for better blame information
-          fetch-depth: 0
-
-      - name: SonarQube Scan
-        uses: sonarsource/sonarqube-scan-action@v3
+          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: 'zulu' # Alternative distribution options are available.
+      - name: Cache SonarQube packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+      - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        with:
-          args: >
-            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
-            -Dsonar.projectName=${{ github.event.repository.name }}
-            -Dsonar.sources=.
-            -Dsonar.exclusions=**/*test*/**,**/*.test.*,**/vendor/**,**/node_modules/**,**/.git/**
-            -Dsonar.scm.provider=git
-            -Dsonar.qualitygate.wait=true
-
-      - name: SonarQube Quality Gate Check
-        uses: sonarsource/sonarqube-quality-gate-action@v1
-        timeout-minutes: 10
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=test-weblate -Dsonar.projectName='test-weblate'
